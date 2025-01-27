@@ -1,101 +1,151 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+import { JSX, useState, useRef } from "react";
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
-  );
+export default function SendMessagePage(): JSX.Element {
+	const [phone, setPhone] = useState<string>("");
+	const [message, setMessage] = useState<string>("");
+	const [file, setFile] = useState<File | null>(null);
+	const [responseMessage, setResponseMessage] = useState<{ success: boolean; message: string } | null>(null);
+
+	const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+	const sendMessage = async (e: React.FormEvent<HTMLFormElement>) => {
+		e.preventDefault();
+
+		const formData = new FormData();
+		formData.append("phone", phone);
+		formData.append("message", message);
+		if (file) {
+			formData.append("file", file);
+		}
+
+		try {
+			const res = await fetch("/api/send-message", {
+				method: "POST",
+				body: formData,
+			});
+
+			const result = await res.json();
+
+			if (res.ok) {
+				setResponseMessage({ success: true, message: "Message sent successfully!" });
+				setMessage("");
+				setFile(null);
+			} else {
+				setResponseMessage({ success: false, message: result.error });
+			}
+		} catch (error) {
+			setResponseMessage({ success: false, message: "Something went wrong!" });
+		}
+	};
+
+	const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+		if (e.target.files && e.target.files[0]) {
+			setFile(e.target.files[0]);
+		}
+	};
+
+	const triggerFileInput = () => {
+		if (fileInputRef.current) {
+			fileInputRef.current.click();
+		}
+	};
+
+	return (
+		<div className="flex justify-center items-center h-screen bg-gray-900 text-white">
+			<div className="w-full max-w-lg bg-gray-800 shadow-xl rounded-2xl p-8">
+				<h1 className="text-2xl font-bold text-gray-100 mb-6 text-center">
+					Send WhatsApp Message
+				</h1>
+				<form onSubmit={sendMessage} className="space-y-4">
+					<div>
+						<label htmlFor="phone" className="block text-sm font-medium text-gray-300">
+							Phone Number
+						</label>
+						<input
+							id="phone"
+							type="text"
+							placeholder="e.g., +1234567890"
+							value={phone}
+							onChange={(e) => setPhone(e.target.value)}
+							className="mt-1 w-full border border-gray-600 rounded-lg px-4 py-2 bg-gray-700 text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+							required
+						/>
+					</div>
+					<div>
+						<label htmlFor="message" className="block text-sm font-medium text-gray-300">
+							Message
+						</label>
+						<div className="relative">
+							<textarea
+								id="message"
+								placeholder="Enter your message here"
+								value={message}
+								onChange={(e) => setMessage(e.target.value)}
+								className="mt-1 w-full border border-gray-600 rounded-lg px-4 py-2 bg-gray-700 text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none pr-10"
+								required
+							/>
+							<input
+								type="file"
+								ref={fileInputRef}
+								className="hidden"
+								onChange={handleFileChange}
+							/>
+							<div
+								className="absolute top-2 right-2 text-blue-400 cursor-pointer hover:text-blue-500"
+								onClick={triggerFileInput}
+							>
+								<svg
+									xmlns="http://www.w3.org/2000/svg"
+									fill="none"
+									viewBox="0 0 24 24"
+									strokeWidth={1.5}
+									stroke="currentColor"
+									className="w-6 h-6"
+								>
+									<path
+										strokeLinecap="round"
+										strokeLinejoin="round"
+										d="M12 4.5v15m7.5-7.5h-15"
+									/>
+								</svg>
+							</div>
+							{file && (
+								<p className="mt-2 text-sm text-gray-400">Attached: {file.name}</p>
+							)}
+						</div>
+					</div>
+					<button
+						type="submit"
+						className="w-full flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg shadow-lg"
+					>
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							fill="none"
+							viewBox="0 0 24 24"
+							strokeWidth={1.5}
+							stroke="currentColor"
+							className="w-5 h-5 mr-2"
+						>
+							<path
+								strokeLinecap="round"
+								strokeLinejoin="round"
+								d="M4.5 12h15m0 0l-6-6m6 6l-6 6"
+							/>
+						</svg>
+						Send Message
+					</button>
+				</form>
+				{responseMessage && (
+					<p
+						className={`mt-4 text-center text-lg font-medium ${responseMessage.success ? "text-green-400" : "text-red-400"
+							}`}
+					>
+						{responseMessage.message}
+					</p>
+				)}
+			</div>
+		</div>
+	);
 }
